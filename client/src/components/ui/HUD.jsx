@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/useGameStore'
 import { sfx } from '../../utils/soundEffects'
+import { enterLandscapeFullscreen, exitFullscreen } from '../../utils/screenHelper'
 import { LEVELS_DATA } from '../../data/levels'
-import { RotateCcw, Volume2, VolumeX, Eye, Crosshair } from 'lucide-react'
+import { RotateCcw, Volume2, VolumeX, Eye, Crosshair, Maximize, Minimize } from 'lucide-react'
 
 export function HUD() {
   const currentLevelIdx = useGameStore((state) => state.currentLevelIdx)
@@ -19,6 +20,27 @@ export function HUD() {
   const gameStatus = useGameStore((state) => state.gameStatus)
 
   const [isMuted, setIsMuted] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', handleFsChange)
+    document.addEventListener('webkitfullscreenchange', handleFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange)
+      document.removeEventListener('webkitfullscreenchange', handleFsChange)
+    }
+  }, [])
+
+  const handleToggleFullscreen = async () => {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      await enterLandscapeFullscreen()
+    } else {
+      exitFullscreen()
+    }
+  }
 
   const handleToggleMute = () => {
     const muted = sfx.toggleMute()
@@ -101,6 +123,19 @@ export function HUD() {
               <VolumeX className="h-5 w-5 text-red-400" />
             ) : (
               <Volume2 className="h-5 w-5" />
+            )}
+          </button>
+
+          {/* Fullscreen / Kunci Landscape */}
+          <button
+            onClick={handleToggleFullscreen}
+            title={isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh & Landscape'}
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            {isFullscreen ? (
+              <Minimize className="h-5 w-5 text-amber-400" />
+            ) : (
+              <Maximize className="h-5 w-5" />
             )}
           </button>
 

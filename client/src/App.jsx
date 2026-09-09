@@ -2,19 +2,25 @@ import React, { useEffect, useState } from 'react'
 import { GameCanvas } from './components/game/GameCanvas'
 import { HUD } from './components/ui/HUD'
 import { WinLoseModal } from './components/ui/WinLoseModal'
+import { RotateNotice } from './components/ui/RotateNotice'
 import { sfx } from './utils/soundEffects'
+import { enterLandscapeFullscreen } from './utils/screenHelper'
 import { Play } from 'lucide-react'
 
 export default function App() {
   const [hasInteracted, setHasInteracted] = useState(false)
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     sfx.init()
+    await enterLandscapeFullscreen()
     setHasInteracted(true)
   }
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans">
+      {/* Deteksi Otomatis & Instruksi Rotasi Layar Mobile */}
+      <RotateNotice />
+
       {/* 3D WebGL Canvas Layer */}
       <GameCanvas />
 
