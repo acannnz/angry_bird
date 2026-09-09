@@ -55,6 +55,7 @@ const MATERIAL_PROPERTIES = {
 export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], position = [0, 0, 0], hp = 100 }) {
   const rigidBodyRef = useRef()
   const damageBlock = useGameStore((state) => state.damageBlock)
+  const gameStatus = useGameStore((state) => state.gameStatus)
   const mountTime = useRef(performance.now())
 
   const isDestroyed = useGameStore((state) => {
@@ -84,7 +85,9 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
   const handleCollision = (event) => {
     if (isDestroyed) return
     const now = performance.now()
-    if (now - mountTime.current < 700) return
+    if (now - mountTime.current < 1800) return
+    // Kunci stabilisasi awal: jangan kurangi HP balok saat burung belum diluncurkan
+    if (gameStatus === 'READY') return
     // Cegah getaran mikro beruntun tiap frame yang melipatgandakan damage/skor
     if (now - lastCollisionTime.current < 180) return
 

@@ -36,7 +36,7 @@ export function WinLoseModal() {
           {isWon ? 'Kemenangan Gemilang!' : 'Level Gagal!'}
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1 font-medium">
-          {isWon ? levelData.name : 'Burung habis dan masih ada musuh yang bertahan.'}
+          {isWon ? (levelData?.name || 'Level Selesai') : 'Burung habis dan masih ada musuh yang bertahan.'}
         </p>
 
         {/* Bintang (Jika Menang) */}
@@ -46,14 +46,14 @@ export function WinLoseModal() {
               <div
                 key={starIdx}
                 className={`transition-all duration-500 ${
-                  starIdx <= stars
+                  starIdx <= (stars ?? 1)
                     ? 'scale-110 text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]'
                     : 'scale-90 text-slate-700'
                 }`}
               >
                 <Star
                   className={`h-8 w-8 sm:h-12 sm:w-12 ${
-                    starIdx <= stars ? 'fill-yellow-400 stroke-yellow-500' : 'fill-slate-800 stroke-slate-600'
+                    starIdx <= (stars ?? 1) ? 'fill-yellow-400 stroke-yellow-500' : 'fill-slate-800 stroke-slate-600'
                   }`}
                 />
               </div>
@@ -67,11 +67,11 @@ export function WinLoseModal() {
             <div className="space-y-1 pb-2 mb-2 border-b border-slate-800 text-[11px] sm:text-xs">
               <div className="flex justify-between items-center text-slate-400">
                 <span>Skor Kehancuran:</span>
-                <span className="font-bold text-slate-200">{baseScore.toLocaleString()}</span>
+                <span className="font-bold text-slate-200">{(baseScore ?? 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-amber-300">
-                <span>Bonus Sisa Burung ({remainingBirdsCount} × 10.000):</span>
-                <span className="font-bold text-amber-400">+{birdBonus.toLocaleString()}</span>
+                <span>Bonus Sisa Burung ({(remainingBirdsCount ?? 0)} × 10.000):</span>
+                <span className="font-bold text-amber-400">+{(birdBonus ?? 0).toLocaleString()}</span>
               </div>
             </div>
           )}
@@ -82,13 +82,13 @@ export function WinLoseModal() {
                 Total Skor
               </div>
               <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight">
-                {score.toLocaleString()}
+                {(score ?? 0).toLocaleString()}
               </div>
             </div>
-            {highScore > 0 && (
+            {(highScore ?? 0) > 0 && (
               <div className="text-right text-[11px] sm:text-xs text-slate-400">
                 <div>Rekor Terbaik:</div>
-                <div className="font-bold text-slate-200">{highScore.toLocaleString()}</div>
+                <div className="font-bold text-slate-200">{(highScore ?? 0).toLocaleString()}</div>
               </div>
             )}
           </div>

@@ -139,20 +139,25 @@ export const useGameStore = create((set, get) => ({
     if (state.gameStatus === 'WON') return
 
     // Sisa burung cadangan yang benar-benar tidak terpakai
-    const remainingBirds = Math.max(0, state.levelData.availableBirds.length - state.launchedBirdsCount)
+    const totalBirds = state.levelData?.availableBirds?.length ?? 0
+    const remainingBirds = Math.max(0, totalBirds - (state.launchedBirdsCount ?? 0))
     const birdBonus = remainingBirds * 10000
-    const finalScore = state.score + birdBonus
+    const finalScore = (state.score ?? 0) + birdBonus
 
-    const thresholds = state.levelData.starThresholds
+    const thresholds = state.levelData?.starThresholds || { star1: 5000, star2: 15000, star3: 25000 }
     let stars = 1
-    if (finalScore >= thresholds.star3) stars = 3
-    else if (finalScore >= thresholds.star2) stars = 2
+    if (finalScore >= (thresholds.star3 ?? 25000)) stars = 3
+    else if (finalScore >= (thresholds.star2 ?? 15000)) stars = 2
 
-    if (finalScore > state.highScore) {
+    const currentHighScore = state.highScore ?? 0
+    if (finalScore > currentHighScore) {
       localStorage.setItem('angry_birds_highscore', finalScore.toString())
     }
 
-    sfx.playVictory()
+    try {
+      sfx.playVictory()
+    } catch (e) {}
+
     try {
       confetti({
         particleCount: 120,
@@ -162,12 +167,12 @@ export const useGameStore = create((set, get) => ({
     } catch (e) {}
 
     set({
-      baseScore: state.score,
+      baseScore: state.score ?? 0,
       birdBonus,
       remainingBirdsCount: remainingBirds,
       score: finalScore,
       stars,
-      highScore: Math.max(finalScore, state.highScore),
+      highScore: Math.max(finalScore, currentHighScore),
       gameStatus: 'WON'
     })
   },

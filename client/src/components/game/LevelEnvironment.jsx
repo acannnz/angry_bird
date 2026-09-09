@@ -35,14 +35,14 @@ export function LevelEnvironment() {
       {/* Lantai / Ground Statis Berfisika */}
       <RigidBody type="fixed" friction={0.8} restitution={0.2}>
         <mesh position={[0, -0.5, 0]} receiveShadow>
-          <boxGeometry args={[80, 1, 30]} />
+          <boxGeometry args={[140, 1, 80]} />
           <meshStandardMaterial color="#65a30d" roughness={0.8} />
         </mesh>
       </RigidBody>
 
       {/* Lapisan Tanah Bawah */}
       <mesh position={[0, -4.5, 0]}>
-        <boxGeometry args={[80, 7, 30]} />
+        <boxGeometry args={[140, 7, 80]} />
         <meshStandardMaterial color="#78350f" roughness={0.9} />
       </mesh>
 

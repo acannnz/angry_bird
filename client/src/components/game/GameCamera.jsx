@@ -18,21 +18,26 @@ export function GameCamera() {
     const isMobile = size.width < 960 || (size.width / Math.max(1, size.height)) < 1.75
 
     if (cameraMode === 'FOLLOW' && activeBirdPosition) {
-      // Mengikuti burung melayang
+      // Mengikuti burung melayang dengan batas pandang aman agar tidak melihat void/sky kosong
+      const clampedX = Math.max(-12.0, Math.min(36.0, activeBirdPosition.x))
+      const clampedY = Math.max(1.0, Math.min(15.0, activeBirdPosition.y))
       targetCamPos.current.set(
-        activeBirdPosition.x - 4,
-        Math.max(2.5, activeBirdPosition.y + 2.0),
-        11
+        clampedX - 4,
+        Math.max(2.8, clampedY + 2.0),
+        isMobile ? 13.5 : 12.0
       )
       targetLookAt.current.set(
-        activeBirdPosition.x + 3,
-        Math.max(1, activeBirdPosition.y),
-        activeBirdPosition.z
+        clampedX + 3,
+        Math.max(1.8, clampedY),
+        0
       )
     } else if (cameraMode === 'OVERVIEW') {
-      // Mengamati runtuhnya struktur target
-      targetCamPos.current.set(5.5, 5.0, 16)
-      targetLookAt.current.set(5.5, 2.5, 0)
+      // Mengamati runtuhnya struktur target dengan posisi proporsional dan lantai terlihat jelas
+      const overviewX = isMobile ? 5.5 : 5.0
+      const overviewY = isMobile ? 4.2 : 3.8
+      const overviewZ = isMobile ? 18.0 : 15.5
+      targetCamPos.current.set(overviewX, overviewY, overviewZ)
+      targetLookAt.current.set(5.0, 2.2, 0)
     } else {
       // Mode AIM (Membidik ketapel dengan jarak statis aman di tepi kiri layar)
       const aspect = Math.max(0.6, size.width / Math.max(1, size.height))

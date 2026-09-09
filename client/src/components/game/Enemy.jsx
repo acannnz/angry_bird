@@ -3,10 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { RigidBody } from '@react-three/rapier'
 import { Html } from '@react-three/drei'
 import { useGameStore } from '../../store/useGameStore'
+import { sfx } from '../../utils/soundEffects'
 
 export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius = 0.45, hp = 50 }) {
   const rigidBodyRef = useRef()
   const damageTarget = useGameStore((state) => state.damageTarget)
+  const gameStatus = useGameStore((state) => state.gameStatus)
   const mountTime = useRef(performance.now())
 
   const isDestroyed = useGameStore((state) => {
@@ -31,7 +33,7 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
   useFrame(() => {
     if (isDestroyed || !rigidBodyRef.current) return
     const now = performance.now()
-    if (now - mountTime.current < 700) return
+    if (now - mountTime.current < 1800) return
 
     let pigPos = null
     try {
@@ -44,8 +46,8 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
       return
     }
 
-    // Pemeriksaan babi tertindih balok berat (Crush Damage Check setiap 380ms)
-    if (now - lastCrushCheck.current > 380) {
+    // Pemeriksaan babi tertindih balok berat hanya saat game sedang aktif (bukan fase READY)
+    if (gameStatus !== 'READY' && now - lastCrushCheck.current > 420) {
       lastCrushCheck.current = now
 
       let totalOverheadMass = 0
@@ -58,11 +60,11 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
           const dy = otherPos.y - pigPos.y
           const dz = Math.abs(otherPos.z - pigPos.z)
 
-          // Jika objek berada di atas tubuh babi dan menekan
-          if (dy > radius * 0.4 && dy < 3.0 && dx < 1.4 && dz < 1.2) {
+          // Objek harus benar-benar menimpa langsung di atas tubuh babi (bukan atap/plafon tinggi)
+          if (dy > radius * 0.35 && dy <= radius * 1.5 && dx <= radius * 1.3 && dz <= radius * 1.3) {
             const bodyMass = typeof otherBody.mass === 'function' ? otherBody.mass() : 2.5
             totalOverheadMass += bodyMass
-          } else if (Math.hypot(dx, dy, dz) > 3.5) {
+          } else if (Math.hypot(dx, dy, dz) > 2.5) {
             toDelete.push(otherBody)
           }
         } catch (e) {
@@ -72,14 +74,16 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
 
       toDelete.forEach((body) => activeContactsRef.current.delete(body))
 
-      if (totalOverheadMass > 1.2) {
-        // Beban berat menindih babi!
+      if (totalOverheadMass > 2.0) {
+        // Beban berat menindih langsung babi!
         const crushDamage = Math.max(15, Math.floor(totalOverheadMass * 6.5))
         setIsSquished(true)
         setHitEffect(true)
         setTimeout(() => setHitEffect(false), 200)
 
-        sfx.playPigSqueal()
+        try {
+          sfx.playPigSqueal()
+        } catch (e) {}
 
         setFloatingDamage({
           text: '💥 TERTINDIH!',
@@ -98,11 +102,14 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
   const handleCollision = (event) => {
     if (isDestroyed) return
     const now = performance.now()
-    if (now - mountTime.current < 700) return
+    if (now - mountTime.current < 1800) return
 
     if (event.other?.rigidBody) {
       activeContactsRef.current.set(event.other.rigidBody, now)
     }
+
+    // Jangan berikan damage ke babi selama game masih berstatus READY
+    if (gameStatus === 'READY') return
 
     if (now - lastHitTime.current < 180) return
 
