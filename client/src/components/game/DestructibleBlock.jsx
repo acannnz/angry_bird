@@ -112,19 +112,31 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
     let damageMultiplier = matProps.damageMultiplier
     let effectiveMinImpact = matProps.minImpact
 
-    if (birdUserData?.isBird && birdUserData.birdType === 'speedy') {
-      if (type === 'wood') {
-        // Chuck sangat kuat memotong dan meremukkan kayu
-        damageMultiplier = birdUserData.isBoosting ? 52 : 28
-        effectiveMinImpact = 1.0
-      } else if (type === 'ice') {
-        // Chuck dengan mudah memecahkan es/kaca
-        damageMultiplier = birdUserData.isBoosting ? 44 : 32
-        effectiveMinImpact = 0.8
-      } else if (type === 'stone') {
-        // Chuck lemah saat berbenturan dengan batu
-        damageMultiplier = 6
-        effectiveMinImpact = 2.4
+    if (birdUserData?.isBird) {
+      if (birdUserData.birdType === 'speedy') {
+        if (type === 'wood') {
+          // Chuck sangat kuat memotong dan meremukkan kayu
+          damageMultiplier = birdUserData.isBoosting ? 52 : 28
+          effectiveMinImpact = 1.0
+        } else if (type === 'ice') {
+          // Chuck dengan mudah memecahkan es/kaca
+          damageMultiplier = birdUserData.isBoosting ? 44 : 32
+          effectiveMinImpact = 0.8
+        } else if (type === 'stone') {
+          // Chuck lemah saat berbenturan dengan batu
+          damageMultiplier = 6
+          effectiveMinImpact = 2.4
+        }
+      } else if (birdUserData.birdType === 'split') {
+        if (type === 'ice') {
+          // The Blues adalah spesialis penghancur es dan kristal kaca!
+          damageMultiplier = 58
+          effectiveMinImpact = 0.6
+        } else if (type === 'wood') {
+          damageMultiplier = 14
+        } else if (type === 'stone') {
+          damageMultiplier = 5
+        }
       }
     }
 

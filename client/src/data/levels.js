@@ -344,7 +344,7 @@ export const LEVELS_DATA = [
     },
     cameraAimPos: [-4, 4.0, 16],
     cameraTargetPos: [1, 2.8, 0],
-    starThresholds: { star1: 15000, star2: 32000, star3: 48000 },
+    starThresholds: { star1: 12000, star2: 24000, star3: 35000 },
     availableBirds: [
       { id: "l11_b1", type: "split", name: "The Blues", mass: 2.2, radius: 0.35, color: "#38bdf8", skill: "Tri-Split" },
       { id: "l11_b2", type: "split", name: "The Blues", mass: 2.2, radius: 0.35, color: "#38bdf8", skill: "Tri-Split" },

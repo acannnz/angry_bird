@@ -169,6 +169,7 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
       mass={1.8}
       restitution={0.35}
       friction={0.6}
+      userData={{ isPig: true, targetId: id, currentHp }}
       onCollisionEnter={handleCollision}
       onCollisionExit={handleCollisionExit}
     >

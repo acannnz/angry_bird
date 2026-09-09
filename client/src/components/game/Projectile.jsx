@@ -317,7 +317,45 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       // Hapus telur setelah meledak
       setSubProjectiles((prev) => prev.filter((p) => p.id !== subId))
     } else {
-      // Sub-burung Blues menabrak balok/babi
+      // Sub-burung The Blues menabrak balok es/kayu atau babi
+      const otherData = event.other?.rigidBodyObject?.userData || event.other?.rigidBody?.userData
+      if (otherData?.id && !otherData?.isPig) {
+        // Menghantam balok
+        if (otherData.blockType === 'ice') {
+          damageBlock(otherData.id, 65)
+          try { sfx.playHit('ice', 2.0) } catch (e) {}
+        } else if (otherData.blockType === 'wood') {
+          damageBlock(otherData.id, 35)
+          try { sfx.playHit('wood', 1.0) } catch (e) {}
+        } else if (otherData.blockType === 'stone') {
+          damageBlock(otherData.id, 15)
+          try { sfx.playHit('stone', 1.0) } catch (e) {}
+        }
+      } else if (otherData?.isPig && otherData?.targetId) {
+        // Menghantam babi secara langsung
+        damageTarget(otherData.targetId, 45)
+        try { sfx.playPigSqueal() } catch (e) {}
+      } else {
+        // Fallback radius jika userData tidak langsung terdeteksi
+        let impactPos = null
+        try {
+          if (event.target) impactPos = event.target.translation()
+        } catch (e) {}
+        if (impactPos) {
+          structures.forEach((b) => {
+            if (!b.destroyed && Math.hypot(b.position[0] - impactPos.x, b.position[1] - impactPos.y) < 1.4) {
+              const dmg = b.type === 'ice' ? 65 : b.type === 'wood' ? 35 : 15
+              damageBlock(b.id, dmg)
+            }
+          })
+          targets.forEach((t) => {
+            if (!t.destroyed && Math.hypot(t.position[0] - impactPos.x, t.position[1] - impactPos.y) < 1.2) {
+              damageTarget(t.id, 45)
+            }
+          })
+        }
+      }
+
       setSubProjectiles((prev) => prev.filter((p) => p.id !== subId))
     }
   }, [structures, targets, damageBlock, damageTarget])
@@ -439,6 +477,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
           colliders="ball"
           mass={sub.type === 'egg_bomb' ? 3.0 : 1.8}
           restitution={0.3}
+          userData={{ isBird: true, birdType: sub.type === 'egg_bomb' ? 'egg' : 'split', isSubBird: true }}
           onCollisionEnter={(e) => handleSubProjectileCollision(sub.id, sub.type, e)}
         >
           <mesh castShadow>
