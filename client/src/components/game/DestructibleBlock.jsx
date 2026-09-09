@@ -107,9 +107,30 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
       } catch (e) {}
     }
 
-    if (impactSpeed > matProps.minImpact) {
+    // Cek apakah balok ditabrak oleh burung tertentu (seperti Chuck si kuning)
+    const birdUserData = event.other?.rigidBodyObject?.userData || event.other?.rigidBody?.userData
+    let damageMultiplier = matProps.damageMultiplier
+    let effectiveMinImpact = matProps.minImpact
+
+    if (birdUserData?.isBird && birdUserData.birdType === 'speedy') {
+      if (type === 'wood') {
+        // Chuck sangat kuat memotong dan meremukkan kayu
+        damageMultiplier = birdUserData.isBoosting ? 52 : 28
+        effectiveMinImpact = 1.0
+      } else if (type === 'ice') {
+        // Chuck dengan mudah memecahkan es/kaca
+        damageMultiplier = birdUserData.isBoosting ? 44 : 32
+        effectiveMinImpact = 0.8
+      } else if (type === 'stone') {
+        // Chuck lemah saat berbenturan dengan batu
+        damageMultiplier = 6
+        effectiveMinImpact = 2.4
+      }
+    }
+
+    if (impactSpeed > effectiveMinImpact) {
       lastCollisionTime.current = now
-      const damage = Math.max(15, Math.floor(impactSpeed * matProps.damageMultiplier))
+      const damage = Math.max(15, Math.floor(impactSpeed * damageMultiplier))
 
       setHitFlash(true)
       setTimeout(() => setHitFlash(false), 180)
@@ -141,6 +162,7 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
       mass={matProps.mass}
       restitution={matProps.restitution}
       friction={matProps.friction}
+      userData={{ id, blockType: type, currentHp }}
       onCollisionEnter={handleCollision}
     >
       {/* Floating Damage & Durability Indicator */}

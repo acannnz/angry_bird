@@ -52,6 +52,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
   const hasSettled = useRef(false)
   const initializedVel = useRef(false)
   const hasTriggeredSkill = useRef(false)
+  const pierceCount = useRef(0)
 
   // Visual states
   const [skillText, setSkillText] = useState(null)
@@ -161,6 +162,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
   const triggerChuckSpeedBoost = useCallback(() => {
     if (hasTriggeredSkill.current || !rigidBodyRef.current) return
     hasTriggeredSkill.current = true
+    pierceCount.current = 0
 
     try {
       sfx.playSpeedBoost()
@@ -174,8 +176,8 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
         dir.set(1, 0.1, 0).normalize()
       }
 
-      // Kecepatan boost seimbang & terarah
-      const boostedSpeed = 24.0
+      // Kecepatan boost seimbang & terarah dengan daya tebas tajam
+      const boostedSpeed = 26.0
       rigidBodyRef.current.setLinvel(
         { x: dir.x * boostedSpeed, y: dir.y * boostedSpeed, z: 0 },
         true
@@ -320,6 +322,37 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
     }
   }, [structures, targets, damageBlock, damageTarget])
 
+  // Handler benturan proyektil utama burung dengan balok / lingkungan (khusus Chuck piercing & material handling)
+  const handleBirdCollision = useCallback((event) => {
+    if (birdType !== 'speedy' || !rigidBodyRef.current) return
+    const blockData = event.other?.rigidBodyObject?.userData || event.other?.rigidBody?.userData
+
+    if (isBoosting) {
+      if (blockData?.blockType === 'wood' || blockData?.blockType === 'ice') {
+        if (pierceCount.current < 3) {
+          pierceCount.current += 1
+          try {
+            const vel = rigidBodyRef.current.linvel()
+            // Menembus balok kayu/es: dorong terus maju dengan momentum potong tajam
+            const remainingSpeed = Math.max(13.0, 25.0 - pierceCount.current * 4.0)
+            const dirX = vel.x >= 0 ? 1 : -1
+            rigidBodyRef.current.setLinvel(
+              { x: dirX * Math.max(Math.abs(vel.x), remainingSpeed), y: vel.y * 0.75, z: 0 },
+              true
+            )
+            sfx.playHit(blockData.blockType, 2.5)
+          } catch (e) {}
+        } else {
+          // Batasan tercapai: setelah menembus hingga 3 balok, dorongan habis dan kembali ke fisika normal
+          setIsBoosting(false)
+        }
+      } else if (blockData?.blockType === 'stone') {
+        // Balok batu kokoh: langsung menghentikan dorongan Chuck dan memantulkannya
+        setIsBoosting(false)
+      }
+    }
+  }, [birdType, isBoosting])
+
   const activateBirdSkill = useCallback(() => {
     if (hasTriggeredSkill.current || hasSettled.current || isExploded) return
 
@@ -432,9 +465,15 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
         linearVelocity={[vx, vy, 0]}
         colliders="ball"
         mass={mass}
-        restitution={0.35}
+        restitution={birdType === 'speedy' && isBoosting ? 0.05 : 0.35}
         friction={0.7}
         ccd={true}
+        userData={{
+          isBird: true,
+          birdType: birdType,
+          isBoosting: isBoosting
+        }}
+        onCollisionEnter={handleBirdCollision}
       >
         <group visible={!isExploded}>
           {skillText && (
