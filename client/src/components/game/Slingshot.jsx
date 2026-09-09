@@ -229,8 +229,16 @@ export function Slingshot({ onLaunch }) {
           </mesh>
 
           {/* Paruh Burung */}
-          <mesh position={[currentBird.radius * 0.9, 0, 0]} rotation={[0, 0, -Math.PI / 2]} castShadow>
-            <coneGeometry args={[currentBird.radius * 0.35, currentBird.radius * 0.7, 12]} />
+          <mesh
+            position={[currentBird.radius * (currentBird.type === 'boomerang' ? 1.3 : 0.9), 0, 0]}
+            rotation={[0, 0, -Math.PI / 2]}
+            castShadow
+          >
+            {currentBird.type === 'boomerang' ? (
+              <coneGeometry args={[currentBird.radius * 0.45, currentBird.radius * 1.5, 12]} />
+            ) : (
+              <coneGeometry args={[currentBird.radius * 0.35, currentBird.radius * 0.7, 12]} />
+            )}
             <meshStandardMaterial color="#f97316" roughness={0.3} />
           </mesh>
 
@@ -255,7 +263,7 @@ export function Slingshot({ onLaunch }) {
 
           {/* Alis Marah */}
           <mesh position={[currentBird.radius * 0.75, currentBird.radius * 0.5, 0]} rotation={[0, 0, -0.2]}>
-            <boxGeometry args={[0.08, 0.08, currentBird.radius * 0.9]} />
+            <boxGeometry args={[0.08, 0.08, currentBird.radius * (currentBird.type === 'crusher' ? 1.2 : 0.9)]} />
             <meshStandardMaterial color="#111827" />
           </mesh>
 
@@ -264,6 +272,14 @@ export function Slingshot({ onLaunch }) {
             <mesh position={[0, currentBird.radius * 0.95, 0]}>
               <cylinderGeometry args={[0.06, 0.06, 0.3, 8]} />
               <meshStandardMaterial color="#f59e0b" />
+            </mesh>
+          )}
+
+          {/* Jambul Matilda jika tipe egg_drop */}
+          {currentBird.type === 'egg_drop' && (
+            <mesh position={[-currentBird.radius * 0.4, currentBird.radius * 0.85, 0]} rotation={[0, 0, 0.3]}>
+              <coneGeometry args={[0.12, 0.4, 8]} />
+              <meshStandardMaterial color="#1f2937" />
             </mesh>
           )}
         </group>

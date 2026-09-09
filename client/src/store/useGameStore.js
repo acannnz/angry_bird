@@ -20,6 +20,7 @@ export const useGameStore = create((set, get) => ({
   stars: 0,
 
   // Burung
+  launchedBirdsCount: 0,
   birdQueue: [...LEVELS_DATA[0].availableBirds],
   currentBird: LEVELS_DATA[0].availableBirds[0] || null,
   activeBirdPosition: null,
@@ -47,6 +48,7 @@ export const useGameStore = create((set, get) => ({
       baseScore: 0,
       birdBonus: 0,
       remainingBirdsCount: 0,
+      launchedBirdsCount: 0,
       stars: 0,
       birdQueue: [...lvl.availableBirds],
       currentBird: lvl.availableBirds[0] || null,
@@ -82,13 +84,14 @@ export const useGameStore = create((set, get) => ({
     if (get().gameStatus !== 'AIMING' && get().gameStatus !== 'READY') return
 
     sfx.playLaunch()
-    set({
+    set((state) => ({
       isDragging: false,
       pullOffset: [0, 0, 0],
       pullStrength: 0,
       gameStatus: 'FLYING',
-      cameraMode: 'FOLLOW'
-    })
+      cameraMode: 'FOLLOW',
+      launchedBirdsCount: state.launchedBirdsCount + 1
+    }))
 
     setTimeout(() => {
       const state = get()
@@ -135,8 +138,8 @@ export const useGameStore = create((set, get) => ({
     const state = get()
     if (state.gameStatus === 'WON') return
 
-    // Sisa burung di cadangan (tidak termasuk burung yang sedang digunakan)
-    const remainingBirds = Math.max(0, state.birdQueue.length - 1)
+    // Sisa burung cadangan yang benar-benar tidak terpakai
+    const remainingBirds = Math.max(0, state.levelData.availableBirds.length - state.launchedBirdsCount)
     const birdBonus = remainingBirds * 10000
     const finalScore = state.score + birdBonus
 
@@ -203,13 +206,18 @@ export const useGameStore = create((set, get) => ({
 
   damageBlock: (id, amount) => {
     const state = get()
+    // Kunci skor saat ronde sudah berakhir
+    if (state.gameStatus === 'WON' || state.gameStatus === 'LOST') return
+
     const targetBlock = state.structures.find((s) => s.id === id)
     if (!targetBlock || targetBlock.destroyed) return
 
-    const newHp = targetBlock.currentHp - amount
+    const actualDamage = Math.min(targetBlock.currentHp, amount)
+    const newHp = targetBlock.currentHp - actualDamage
     const destroyed = newHp <= 0
 
-    let addedScore = Math.floor(amount * 5)
+    // Poin serpihan proporsional wajar, ditambah bonus hancur terstandarisasi
+    let addedScore = Math.floor(actualDamage * 2)
     if (destroyed) {
       addedScore += targetBlock.type === 'stone' ? 2000 : targetBlock.type === 'ice' ? 600 : 1000
     }
@@ -229,18 +237,25 @@ export const useGameStore = create((set, get) => ({
 
   damageTarget: (id, amount) => {
     const state = get()
+    // Kunci skor saat ronde sudah berakhir
+    if (state.gameStatus === 'WON' || state.gameStatus === 'LOST') return
+
     const target = state.targets.find((t) => t.id === id)
     if (!target || target.destroyed) return
 
-    const newHp = Math.max(0, target.currentHp - amount)
+    const actualDamage = Math.min(target.currentHp, amount)
+    const newHp = Math.max(0, target.currentHp - actualDamage)
     const destroyed = newHp <= 0
 
     if (destroyed) {
       sfx.playPigDestroy()
     }
 
+    // Skor babi: hancur = 5000 poin standar, damage biasa = actualDamage * 5
+    const addedScore = destroyed ? 5000 : Math.floor(actualDamage * 5)
+
     set((state) => ({
-      score: state.score + (destroyed ? 5000 : Math.floor(amount * 10)),
+      score: state.score + addedScore,
       targets: state.targets.map((t) => {
         if (t.id === id) {
           return { ...t, currentHp: newHp, destroyed }

@@ -6,6 +6,39 @@ import { Html } from '@react-three/drei'
 import { useGameStore } from '../../store/useGameStore'
 import { sfx } from '../../utils/soundEffects'
 
+// Algoritma Liang-Barsky untuk mendeteksi perpotongan garis ledakan dengan kotak balok 2D
+function lineIntersectsBox(p1, p2, boxPos, boxSize) {
+  const minX = boxPos[0] - boxSize[0] / 2
+  const maxX = boxPos[0] + boxSize[0] / 2
+  const minY = boxPos[1] - boxSize[1] / 2
+  const maxY = boxPos[1] + boxSize[1] / 2
+
+  const dx = p2.x - p1.x
+  const dy = p2.y - p1.y
+
+  let t0 = 0.0
+  let t1 = 1.0
+
+  const p = [-dx, dx, -dy, dy]
+  const q = [p1.x - minX, maxX - p1.x, p1.y - minY, maxY - p1.y]
+
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false
+    } else {
+      const t = q[i] / p[i]
+      if (p[i] < 0) {
+        if (t > t1) return false
+        if (t > t0) t0 = t
+      } else {
+        if (t < t0) return false
+        if (t < t1) t1 = t
+      }
+    }
+  }
+  return t0 <= t1 && t0 < 0.95 && t1 > 0.05
+}
+
 export function Projectile({ initialPosition, initialImpulse, initialVelocity, birdData }) {
   const rigidBodyRef = useRef()
   const setActiveBirdPosition = useGameStore((state) => state.setActiveBirdPosition)
@@ -27,33 +60,38 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
   const [isExploded, setIsExploded] = useState(false)
   const [explosionPos, setExplosionPos] = useState(null)
 
+  // Sub-proyektil untuk The Blues (split) dan Matilda (egg bomb)
+  const [subProjectiles, setSubProjectiles] = useState([])
+
   const radius = birdData?.radius || 0.45
-  const mass = birdData?.mass || 3.0
+  const mass = birdData?.mass || 3.5
   const birdType = birdData?.type || 'standard'
 
-  // Kecepatan awal pelontaran di bidang Z = 0
-  const vx = initialVelocity?.x ?? (initialImpulse ? initialImpulse.x / mass : 14)
-  const vy = initialVelocity?.y ?? (initialImpulse ? initialImpulse.y / mass : 7)
-  const vz = 0
+  // Kecepatan awal terkalibrasi santai & natural di bidang Z = 0
+  const vx = initialVelocity?.x ?? (initialImpulse ? initialImpulse.x / mass : 12)
+  const vy = initialVelocity?.y ?? (initialImpulse ? initialImpulse.y / mass : 6.5)
 
-  // SKILL: Bomb Ledakan AOE (Hanya aktif saat pemain klik/tap manual)
+  // SKILL: Bomb Ledakan AOE dengan Kalkulasi Redaman Rintangan (Blast Occlusion)
   const triggerBombExplosion = useCallback(() => {
     if (hasTriggeredSkill.current || !rigidBodyRef.current) return
     hasTriggeredSkill.current = true
 
     try {
       const pos = rigidBodyRef.current.translation()
-      const fixedPos = [pos.x, pos.y, 0]
-      setExplosionPos(fixedPos)
+      const blastCenter = { x: pos.x, y: pos.y, z: 0 }
+      setExplosionPos([blastCenter.x, blastCenter.y, 0])
       setIsExploded(true)
       setSkillText('💥 BOOM!')
       setShockwaveRadius(0.5)
       sfx.playExplosion()
 
+      const explosionRadius = 4.6
+
+      // Animasi gelombang kejut shockwave
       let currentRadius = 0.5
       const interval = setInterval(() => {
-        currentRadius += 0.9
-        if (currentRadius > 7.0) {
+        currentRadius += 0.8
+        if (currentRadius > explosionRadius) {
           clearInterval(interval)
           setShockwaveRadius(null)
         } else {
@@ -61,23 +99,50 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
         }
       }, 30)
 
-      const explosionRadius = 7.0
+      // Fungsi menghitung rasio transmisi daya ledak setelah melewati rintangan
+      const calculateTransmission = (targetCenter) => {
+        let transmission = 1.0
+        structures.forEach((block) => {
+          if (block.destroyed) return
+          if (lineIntersectsBox(blastCenter, targetCenter, block.position, block.size)) {
+            // Batu menyerap 75% ledakan, kayu 45%, es 15%
+            const absorption = block.type === 'stone' ? 0.75 : block.type === 'wood' ? 0.45 : 0.15
+            transmission *= (1 - absorption)
+          }
+        })
+        return transmission
+      }
+
+      // Hitung kerusakan balok rintangan berdasarkan jarak & redaman
       structures.forEach((block) => {
         if (block.destroyed) return
         const [bx, by, bz] = block.position
-        const dist = Math.hypot(bx - pos.x, by - pos.y, bz - pos.z)
+        const dist = Math.hypot(bx - blastCenter.x, by - blastCenter.y, bz - blastCenter.z)
         if (dist < explosionRadius) {
-          const damage = Math.floor(260 * (1 - dist / explosionRadius))
-          damageBlock(block.id, damage)
+          const transmission = calculateTransmission({ x: bx, y: by })
+          const baseBlockDamage = 220
+          const falloff = 1 - dist / explosionRadius
+          const damage = Math.floor(baseBlockDamage * falloff * transmission)
+          if (damage > 10) {
+            damageBlock(block.id, damage)
+          }
         }
       })
 
+      // Hitung kerusakan musuh babi (tidak tembus bebas membabi buta)
       targets.forEach((target) => {
         if (target.destroyed) return
         const [tx, ty, tz] = target.position
-        const dist = Math.hypot(tx - pos.x, ty - pos.y, tz - pos.z)
+        const dist = Math.hypot(tx - blastCenter.x, ty - blastCenter.y, tz - blastCenter.z)
         if (dist < explosionRadius) {
-          damageTarget(target.id, 999)
+          const transmission = calculateTransmission({ x: tx, y: ty })
+          const baseTargetDamage = 135
+          const falloff = 1 - dist / explosionRadius
+          const damage = Math.floor(baseTargetDamage * falloff * transmission)
+
+          if (damage > 12) {
+            damageTarget(target.id, damage)
+          }
         }
       })
 
@@ -106,10 +171,11 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       const vel = rigidBodyRef.current.linvel()
       const dir = new THREE.Vector3(vel.x, vel.y, 0).normalize()
       if (dir.length() < 0.1 || dir.x <= 0) {
-        dir.set(1, 0.15, 0).normalize()
+        dir.set(1, 0.1, 0).normalize()
       }
 
-      const boostedSpeed = 38.0
+      // Kecepatan boost seimbang & terarah
+      const boostedSpeed = 24.0
       rigidBodyRef.current.setLinvel(
         { x: dir.x * boostedSpeed, y: dir.y * boostedSpeed, z: 0 },
         true
@@ -127,9 +193,132 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       setSkillText('💢 BATTLE CRY!')
       setTimeout(() => setSkillText(null), 1200)
 
-      rigidBodyRef.current.applyImpulse({ x: 22, y: 8, z: 0 }, true)
+      rigidBodyRef.current.applyImpulse({ x: 14, y: 5, z: 0 }, true)
     } catch (e) {}
   }, [])
+
+  // SKILL: The Blues Tri-Split
+  const triggerBluesSplit = useCallback(() => {
+    if (hasTriggeredSkill.current || !rigidBodyRef.current) return
+    hasTriggeredSkill.current = true
+
+    try {
+      sfx.playTriSplit()
+      setSkillText('🔹 TRI-SPLIT!')
+      setTimeout(() => setSkillText(null), 1200)
+
+      const pos = rigidBodyRef.current.translation()
+      const vel = rigidBodyRef.current.linvel()
+
+      // Burung utama sedikit diarahkan lurus
+      rigidBodyRef.current.setLinvel({ x: vel.x * 1.05, y: vel.y, z: 0 }, true)
+
+      // Tambahkan 2 sub-burung ke atas dan ke bawah
+      setSubProjectiles([
+        {
+          id: 'blue_top',
+          type: 'split_child',
+          pos: [pos.x, pos.y + 0.35, 0],
+          vel: [vel.x * 1.05, vel.y + 3.4, 0],
+          radius: radius * 0.9,
+          color: '#38bdf8'
+        },
+        {
+          id: 'blue_bottom',
+          type: 'split_child',
+          pos: [pos.x, pos.y - 0.35, 0],
+          vel: [vel.x * 1.05, vel.y - 3.4, 0],
+          radius: radius * 0.9,
+          color: '#38bdf8'
+        }
+      ])
+    } catch (e) {}
+  }, [radius])
+
+  // SKILL: Matilda Egg Drop
+  const triggerMatildaEggDrop = useCallback(() => {
+    if (hasTriggeredSkill.current || !rigidBodyRef.current) return
+    hasTriggeredSkill.current = true
+
+    try {
+      sfx.playEggDrop()
+      setSkillText('🥚 EGG BOMB!')
+      setTimeout(() => setSkillText(null), 1200)
+
+      const pos = rigidBodyRef.current.translation()
+      const vel = rigidBodyRef.current.linvel()
+
+      // Matilda melambung ke kanan atas
+      rigidBodyRef.current.setLinvel({ x: Math.max(vel.x + 3.0, 8.0), y: Math.max(vel.y + 9.0, 9.0), z: 0 }, true)
+
+      // Telur dijatuhkan tegak lurus dengan kecepatan jatuh tinggi
+      setSubProjectiles([
+        {
+          id: 'matilda_egg',
+          type: 'egg_bomb',
+          pos: [pos.x, pos.y - 0.55, 0],
+          vel: [vel.x * 0.25, -15.0, 0],
+          radius: 0.32,
+          color: '#ffffff'
+        }
+      ])
+    } catch (e) {}
+  }, [])
+
+  // SKILL: Hal Boomerang
+  const triggerHalBoomerang = useCallback(() => {
+    if (hasTriggeredSkill.current || !rigidBodyRef.current) return
+    hasTriggeredSkill.current = true
+
+    try {
+      sfx.playBoomerang()
+      setSkillText('🪃 BOOMERANG!')
+      setTimeout(() => setSkillText(null), 1500)
+
+      const vel = rigidBodyRef.current.linvel()
+      // Hal berbalik arah melesat ke belakang (kiri)
+      rigidBodyRef.current.setLinvel({ x: -Math.abs(vel.x) * 1.35, y: vel.y + 3.8, z: 0 }, true)
+    } catch (e) {}
+  }, [])
+
+  // Handler benturan untuk sub-proyektil (The Blues split & Egg Bomb)
+  const handleSubProjectileCollision = useCallback((subId, subType, event) => {
+    if (subType === 'egg_bomb') {
+      sfx.playExplosion()
+      // Ledakan telur Matilda
+      let impactPos = null
+      try {
+        if (event.target) {
+          impactPos = event.target.translation()
+        }
+      } catch (e) {}
+
+      const blastX = impactPos?.x ?? 0
+      const blastY = impactPos?.y ?? 0
+
+      // AOE ledakan telur radius 3.2
+      structures.forEach((b) => {
+        if (b.destroyed) return
+        const dist = Math.hypot(b.position[0] - blastX, b.position[1] - blastY)
+        if (dist < 3.2) {
+          damageBlock(b.id, Math.floor(180 * (1 - dist / 3.2)))
+        }
+      })
+      targets.forEach((t) => {
+        if (t.destroyed) return
+        const dist = Math.hypot(t.position[0] - blastX, t.position[1] - blastY)
+        if (dist < 3.2) {
+          damageTarget(t.id, Math.floor(120 * (1 - dist / 3.2)))
+        }
+      })
+
+      // Hapus telur setelah meledak
+      setSubProjectiles((prev) => prev.filter((p) => p.id !== subId))
+    } else {
+      // Sub-burung Blues menabrak balok/babi
+      setSubProjectiles((prev) => prev.filter((p) => p.id !== subId))
+    }
+  }, [structures, targets, damageBlock, damageTarget])
 
   const activateBirdSkill = useCallback(() => {
     if (hasTriggeredSkill.current || hasSettled.current || isExploded) return
@@ -138,10 +327,20 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       triggerChuckSpeedBoost()
     } else if (birdType === 'heavy') {
       triggerBombExplosion()
+    } else if (birdType === 'split') {
+      triggerBluesSplit()
+    } else if (birdType === 'egg_drop') {
+      triggerMatildaEggDrop()
+    } else if (birdType === 'boomerang') {
+      triggerHalBoomerang()
+    } else if (birdType === 'crusher') {
+      // Terence tidak perlu skill manual, memiliki momentum penghancur pasif
+      setSkillText('💥 TITAN CRUSHER!')
+      setTimeout(() => setSkillText(null), 1000)
     } else {
       triggerRedBattleCry()
     }
-  }, [birdType, isExploded, triggerChuckSpeedBoost, triggerBombExplosion, triggerRedBattleCry])
+  }, [birdType, isExploded, triggerChuckSpeedBoost, triggerBombExplosion, triggerBluesSplit, triggerMatildaEggDrop, triggerHalBoomerang, triggerRedBattleCry])
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -171,10 +370,10 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       setActiveBirdPosition(new THREE.Vector3(pos.x, pos.y, 0))
 
       const elapsed = performance.now() - launchTime.current
-      if (elapsed > 2000 && speed < 0.4) {
+      if (elapsed > 1800 && speed < 0.35) {
         hasSettled.current = true
         birdSettled()
-      } else if (pos.y < -2 || pos.x > 35 || elapsed > 8500) {
+      } else if (pos.y < -2.5 || pos.x > 38 || elapsed > 9000) {
         hasSettled.current = true
         birdSettled()
       }
@@ -183,18 +382,48 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
 
   return (
     <group>
+      {/* Shockwave Ledakan Bomb */}
       {shockwaveRadius && explosionPos && (
         <mesh position={explosionPos}>
           <sphereGeometry args={[shockwaveRadius, 24, 24]} />
           <meshBasicMaterial
             color="#f97316"
             transparent
-            opacity={Math.max(0, 0.75 - shockwaveRadius / 8)}
+            opacity={Math.max(0, 0.7 - shockwaveRadius / 5.0)}
             wireframe={true}
           />
         </mesh>
       )}
 
+      {/* Sub-proyektil aktif (The Blues split atau Matilda Egg Bomb) */}
+      {subProjectiles.map((sub) => (
+        <RigidBody
+          key={sub.id}
+          position={sub.pos}
+          linearVelocity={sub.vel}
+          enabledTranslations={[true, true, false]}
+          enabledRotations={[false, false, true]}
+          colliders="ball"
+          mass={sub.type === 'egg_bomb' ? 3.0 : 1.8}
+          restitution={0.3}
+          onCollisionEnter={(e) => handleSubProjectileCollision(sub.id, sub.type, e)}
+        >
+          <mesh castShadow>
+            {sub.type === 'egg_bomb' ? (
+              <sphereGeometry args={[sub.radius, 16, 16]} />
+            ) : (
+              <sphereGeometry args={[sub.radius, 16, 16]} />
+            )}
+            <meshStandardMaterial
+              color={sub.color}
+              roughness={0.3}
+              metalness={sub.type === 'egg_bomb' ? 0.2 : 0.05}
+            />
+          </mesh>
+        </RigidBody>
+      ))}
+
+      {/* Proyektil Utama Burung */}
       <RigidBody
         ref={rigidBodyRef}
         position={[initialPosition.x, initialPosition.y, 0]}
@@ -217,6 +446,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
           )}
 
           <group>
+            {/* Badan Burung berdasarkan Tipe */}
             <mesh castShadow>
               {birdType === 'speedy' ? (
                 <coneGeometry args={[radius * 1.1, radius * 1.6, 16]} rotation={[0, 0, -Math.PI / 2]} />
@@ -232,11 +462,21 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
               />
             </mesh>
 
-            <mesh position={[radius * 0.9, 0, 0]} rotation={[0, 0, -Math.PI / 2]} castShadow>
-              <coneGeometry args={[radius * 0.35, radius * 0.7, 12]} />
+            {/* Paruh Burung (Khusus Hal / Boomerang paruh lebih panjang & melengkung) */}
+            <mesh
+              position={[radius * (birdType === 'boomerang' ? 1.3 : 0.9), 0, 0]}
+              rotation={[0, 0, -Math.PI / 2]}
+              castShadow
+            >
+              {birdType === 'boomerang' ? (
+                <coneGeometry args={[radius * 0.45, radius * 1.5, 12]} />
+              ) : (
+                <coneGeometry args={[radius * 0.35, radius * 0.7, 12]} />
+              )}
               <meshStandardMaterial color="#f97316" roughness={0.3} />
             </mesh>
 
+            {/* Mata Kiri & Kanan */}
             <mesh position={[radius * 0.7, radius * 0.3, -radius * 0.35]}>
               <sphereGeometry args={[radius * 0.22, 10, 10]} />
               <meshStandardMaterial color="#ffffff" />
@@ -254,15 +494,25 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
               <meshStandardMaterial color="#000000" />
             </mesh>
 
+            {/* Alis Marah */}
             <mesh position={[radius * 0.75, radius * 0.5, 0]} rotation={[0, 0, -0.2]}>
-              <boxGeometry args={[0.08, 0.08, radius * 0.9]} />
+              <boxGeometry args={[0.08, 0.08, radius * (birdType === 'crusher' ? 1.2 : 0.9)]} />
               <meshStandardMaterial color="#111827" />
             </mesh>
 
+            {/* Sumbu Bom jika tipe Heavy */}
             {birdType === 'heavy' && (
               <mesh position={[0, radius * 0.95, 0]}>
                 <cylinderGeometry args={[0.06, 0.06, 0.3, 8]} />
                 <meshStandardMaterial color="#f59e0b" />
+              </mesh>
+            )}
+
+            {/* Jambul Matilda */}
+            {birdType === 'egg_drop' && (
+              <mesh position={[-radius * 0.4, radius * 0.85, 0]} rotation={[0, 0, 0.3]}>
+                <coneGeometry args={[0.12, 0.4, 8]} />
+                <meshStandardMaterial color="#1f2937" />
               </mesh>
             )}
           </group>

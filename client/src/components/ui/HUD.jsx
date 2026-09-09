@@ -58,20 +58,20 @@ export function HUD() {
   const remainingPigs = targets.filter((t) => !t.destroyed).length
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 md:p-6 z-40 select-none">
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-4 md:p-6 z-40 select-none">
       {/* Top Header */}
-      <div className="flex items-start justify-between gap-3">
-        {/* Left: Level Selector (10 Level Scrollable) */}
-        <div className="pointer-events-auto flex flex-col gap-1 bg-slate-950/75 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-800/80 shadow-lg max-w-[240px] sm:max-w-xs md:max-w-md">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 truncate">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        {/* Left: Level Selector (20 Level Scrollable) */}
+        <div className="pointer-events-auto flex flex-col gap-1 bg-slate-950/80 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border border-slate-800/80 shadow-lg max-w-[180px] sm:max-w-xs md:max-w-md">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 truncate">
             {levelData.name}
           </span>
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none touch-pan-x overscroll-contain">
             {LEVELS_DATA.map((lvl, idx) => (
               <button
                 key={lvl.levelId}
                 onClick={() => initLevel(idx)}
-                className={`text-xs px-2.5 py-1 rounded-lg font-bold shrink-0 transition-all cursor-pointer ${
+                className={`text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-bold shrink-0 transition-all cursor-pointer ${
                   currentLevelIdx === idx
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 scale-105'
                     : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
@@ -84,32 +84,32 @@ export function HUD() {
         </div>
 
         {/* Center: Live Score Display */}
-        <div className="pointer-events-auto flex flex-col items-center bg-slate-950/75 backdrop-blur-md px-5 py-1.5 rounded-2xl border border-amber-500/30 shadow-lg shadow-amber-500/5">
-          <span className="text-[9px] font-bold tracking-widest text-slate-400 uppercase">
+        <div className="pointer-events-auto flex flex-col items-center bg-slate-950/80 backdrop-blur-md px-3.5 sm:px-5 py-1 sm:py-1.5 rounded-2xl border border-amber-500/30 shadow-lg shadow-amber-500/5">
+          <span className="text-[8px] sm:text-[9px] font-bold tracking-widest text-slate-400 uppercase">
             SKOR
           </span>
-          <span className="text-xl md:text-3xl font-black text-amber-400 tracking-tight drop-shadow">
+          <span className="text-base sm:text-xl md:text-3xl font-black text-amber-400 tracking-tight drop-shadow">
             {score.toLocaleString()}
           </span>
           {highScore > 0 && (
-            <span className="text-[9px] font-medium text-slate-400">
+            <span className="text-[8px] sm:text-[9px] font-medium text-slate-400">
               Rekor: {highScore.toLocaleString()}
             </span>
           )}
         </div>
 
         {/* Right: Actions Controls */}
-        <div className="pointer-events-auto flex items-center gap-1.5 bg-slate-950/75 backdrop-blur-md p-1.5 rounded-2xl border border-slate-800/80 shadow-lg">
+        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 bg-slate-950/80 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-slate-800/80 shadow-lg">
           {/* Ganti Sudut Kamera */}
           <button
             onClick={handleToggleCamera}
             title="Ganti Sudut Kamera"
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
           >
             {cameraMode === 'AIM' ? (
-              <Eye className="h-5 w-5" />
+              <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
             ) : (
-              <Crosshair className="h-5 w-5 text-amber-400" />
+              <Crosshair className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
             )}
           </button>
 
@@ -117,12 +117,12 @@ export function HUD() {
           <button
             onClick={handleToggleMute}
             title={isMuted ? 'Nyalakan Suara' : 'Bisukan Suara'}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
           >
             {isMuted ? (
-              <VolumeX className="h-5 w-5 text-red-400" />
+              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
             ) : (
-              <Volume2 className="h-5 w-5" />
+              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </button>
 
@@ -130,12 +130,12 @@ export function HUD() {
           <button
             onClick={handleToggleFullscreen}
             title={isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh & Landscape'}
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
           >
             {isFullscreen ? (
-              <Minimize className="h-5 w-5 text-amber-400" />
+              <Minimize className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
             ) : (
-              <Maximize className="h-5 w-5" />
+              <Maximize className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </button>
 
@@ -143,9 +143,9 @@ export function HUD() {
           <button
             onClick={resetLevel}
             title="Ulangi Level"
-            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
           >
-            <RotateCcw className="h-5 w-5" />
+            <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>

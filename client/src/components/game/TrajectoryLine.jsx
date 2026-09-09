@@ -17,32 +17,32 @@ export function TrajectoryLine() {
 
     const startPos = new THREE.Vector3(
       levelData.slingshot.position[0] + ox,
-      levelData.slingshot.position[1] + oy + 0.8,
-      levelData.slingshot.position[2] + oz
+      levelData.slingshot.position[1] + 1.7 + oy,
+      0
     )
 
     // Arah berlawanan dengan tarikan
-    const force = levelData.slingshot.forceFactor
-    const mass = currentBird.mass || 3.0
+    const force = levelData.slingshot.forceFactor || 20.0
+    const mass = currentBird.mass || 3.5
     // Kecepatan awal v0 = impulse / mass = (-offset * force) / mass
-    const v0 = new THREE.Vector3(-ox, -oy, -oz).multiplyScalar(force / mass)
+    const v0 = new THREE.Vector3(-ox, -oy, 0).multiplyScalar(force / mass)
 
     const gravity = -9.81
     const pts = []
-    const stepTime = 0.05
-    const maxSteps = 30
+    const stepTime = 0.045
+    const maxSteps = 36
 
     for (let i = 0; i < maxSteps; i++) {
       const t = i * stepTime
       const x = startPos.x + v0.x * t
       const y = startPos.y + v0.y * t + 0.5 * gravity * t * t
-      const z = startPos.z + v0.z * t
+      const z = 0
 
       if (y < 0) {
-        pts.push(new THREE.Vector3(x, 0.05, z))
+        pts.push(new THREE.Vector3(x, 0.05, 0))
         break
       }
-      pts.push(new THREE.Vector3(x, y, z))
+      pts.push(new THREE.Vector3(x, y, 0))
     }
 
     return pts

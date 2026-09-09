@@ -78,10 +78,15 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
     return new THREE.EdgesGeometry(box)
   }, [size])
 
+  const lastCollisionTime = useRef(0)
+
   // Event tabrakan dengan deteksi kecepatan impak
   const handleCollision = (event) => {
     if (isDestroyed) return
-    if (performance.now() - mountTime.current < 700) return
+    const now = performance.now()
+    if (now - mountTime.current < 700) return
+    // Cegah getaran mikro beruntun tiap frame yang melipatgandakan damage/skor
+    if (now - lastCollisionTime.current < 180) return
 
     let impactSpeed = 0
 
@@ -100,6 +105,7 @@ export function DestructibleBlock({ id, type = 'wood', size = [1, 1, 1], positio
     }
 
     if (impactSpeed > matProps.minImpact) {
+      lastCollisionTime.current = now
       const damage = Math.max(15, Math.floor(impactSpeed * matProps.damageMultiplier))
 
       setHitFlash(true)

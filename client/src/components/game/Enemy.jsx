@@ -21,24 +21,90 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
   // State indikator visual hit & damage
   const [hitEffect, setHitEffect] = useState(false)
   const [floatingDamage, setFloatingDamage] = useState(null)
+  const [isSquished, setIsSquished] = useState(false)
 
-  // Deteksi jika babi jatuh dari platform atau terlempar jauh
+  const activeContactsRef = useRef(new Map())
+  const lastCrushCheck = useRef(0)
+  const lastHitTime = useRef(0)
+
+  // Deteksi jika babi jatuh dari platform atau tertindih balok berat di atasnya
   useFrame(() => {
     if (isDestroyed || !rigidBodyRef.current) return
-    if (performance.now() - mountTime.current < 700) return
+    const now = performance.now()
+    if (now - mountTime.current < 700) return
 
+    let pigPos = null
     try {
-      const pos = rigidBodyRef.current.translation()
-      if (pos.y < -0.2 || Math.abs(pos.z) > 4 || pos.x > 32) {
+      pigPos = rigidBodyRef.current.translation()
+      if (pigPos.y < -0.2 || Math.abs(pigPos.z) > 4 || pigPos.x > 35) {
         damageTarget(id, 999)
+        return
       }
-    } catch (e) {}
+    } catch (e) {
+      return
+    }
+
+    // Pemeriksaan babi tertindih balok berat (Crush Damage Check setiap 380ms)
+    if (now - lastCrushCheck.current > 380) {
+      lastCrushCheck.current = now
+
+      let totalOverheadMass = 0
+      const toDelete = []
+
+      activeContactsRef.current.forEach((_, otherBody) => {
+        try {
+          const otherPos = otherBody.translation()
+          const dx = Math.abs(otherPos.x - pigPos.x)
+          const dy = otherPos.y - pigPos.y
+          const dz = Math.abs(otherPos.z - pigPos.z)
+
+          // Jika objek berada di atas tubuh babi dan menekan
+          if (dy > radius * 0.4 && dy < 3.0 && dx < 1.4 && dz < 1.2) {
+            const bodyMass = typeof otherBody.mass === 'function' ? otherBody.mass() : 2.5
+            totalOverheadMass += bodyMass
+          } else if (Math.hypot(dx, dy, dz) > 3.5) {
+            toDelete.push(otherBody)
+          }
+        } catch (e) {
+          toDelete.push(otherBody)
+        }
+      })
+
+      toDelete.forEach((body) => activeContactsRef.current.delete(body))
+
+      if (totalOverheadMass > 1.2) {
+        // Beban berat menindih babi!
+        const crushDamage = Math.max(15, Math.floor(totalOverheadMass * 6.5))
+        setIsSquished(true)
+        setHitEffect(true)
+        setTimeout(() => setHitEffect(false), 200)
+
+        sfx.playPigSqueal()
+
+        setFloatingDamage({
+          text: '💥 TERTINDIH!',
+          time: Date.now()
+        })
+        setTimeout(() => setFloatingDamage(null), 1000)
+
+        damageTarget(id, crushDamage)
+      } else {
+        setIsSquished(false)
+      }
+    }
   })
 
-  // Deteksi tabrakan fisik
+  // Deteksi tabrakan fisik dengan pembatas throttle
   const handleCollision = (event) => {
     if (isDestroyed) return
-    if (performance.now() - mountTime.current < 700) return
+    const now = performance.now()
+    if (now - mountTime.current < 700) return
+
+    if (event.other?.rigidBody) {
+      activeContactsRef.current.set(event.other.rigidBody, now)
+    }
+
+    if (now - lastHitTime.current < 180) return
 
     let impactSpeed = 0
 
@@ -57,6 +123,7 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
     }
 
     if (impactSpeed > 1.4) {
+      lastHitTime.current = now
       const damageAmount = impactSpeed > 3.8 ? hp : Math.max(20, Math.floor(impactSpeed * 12))
 
       setHitEffect(true)
@@ -69,6 +136,12 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
       setTimeout(() => setFloatingDamage(null), 1200)
 
       damageTarget(id, damageAmount)
+    }
+  }
+
+  const handleCollisionExit = (event) => {
+    if (event.other?.rigidBody) {
+      activeContactsRef.current.delete(event.other.rigidBody)
     }
   }
 
@@ -90,6 +163,7 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
       restitution={0.35}
       friction={0.6}
       onCollisionEnter={handleCollision}
+      onCollisionExit={handleCollisionExit}
     >
       {/* Indikator Health Bar & Floating Damage Text */}
       <Html
@@ -118,7 +192,7 @@ export function Enemy({ id, type = 'standard_pig', position = [0, 0, 0], radius 
         </div>
       </Html>
 
-      <group>
+      <group scale={isSquished ? [1.22, 0.72, 1.22] : [1, 1, 1]}>
         {/* Badan Babi Hijau */}
         <mesh castShadow>
           <sphereGeometry args={[radius, 24, 24]} />
