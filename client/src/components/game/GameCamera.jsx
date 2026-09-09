@@ -34,19 +34,28 @@ export function GameCamera() {
       targetCamPos.current.set(5.5, 5.0, 16)
       targetLookAt.current.set(5.5, 2.5, 0)
     } else {
-      // Mode AIM (Membidik ketapel)
-      const baseAimPos = levelData.cameraAimPos || [-4, 3.5, 14]
-      const baseAimTarget = levelData.cameraTargetPos || [0, 2.5, 0]
+      // Mode AIM (Membidik ketapel dengan jarak statis aman di tepi kiri layar)
+      const aspect = Math.max(0.6, size.width / Math.max(1, size.height))
+      const fovRad = ((camera.fov || 45) * Math.PI) / 180
 
-      if (isMobile) {
-        // Pada layar mobile, geser kamera ke kiri dan sedikit mundur (zoom out)
-        // agar posisi ketapel lebih ke tengah-kiri dan menyisakan banyak ruang untuk menarik ke belakang
-        targetCamPos.current.set(baseAimPos[0] - 2.2, baseAimPos[1] + 0.2, baseAimPos[2] + 2.2)
-        targetLookAt.current.set(baseAimTarget[0] - 2.0, baseAimTarget[1], baseAimTarget[2])
-      } else {
-        targetCamPos.current.set(baseAimPos[0], baseAimPos[1], baseAimPos[2])
-        targetLookAt.current.set(baseAimTarget[0], baseAimTarget[1], baseAimTarget[2])
-      }
+      const slingX = levelData.slingshot?.position?.[0] ?? -9.0
+      const baseZ = isMobile ? 18.0 : 16.2
+      const halfHeight = baseZ * Math.tan(fovRad / 2)
+      const halfWidth = halfHeight * aspect
+
+      // Jarak statis minimal 3.8 unit di sebelah kiri ketapel agar tidak terpotong di tepi layar
+      const safeLeftMargin = isMobile ? 4.2 : 3.8
+      let lookAtX = (slingX - safeLeftMargin) + halfWidth
+
+      // Batasi agar bidikan tetap proporsional menghadap struktur target
+      lookAtX = Math.max(-2.5, Math.min(1.5, lookAtX))
+
+      const camX = lookAtX - (isMobile ? 3.6 : 3.0)
+      const camY = isMobile ? 3.8 : 3.5
+      const lookAtY = 2.4
+
+      targetCamPos.current.set(camX, camY, baseZ)
+      targetLookAt.current.set(lookAtX, lookAtY, 0)
     }
 
     // Interpolasi posisi kamera
