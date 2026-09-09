@@ -196,17 +196,21 @@ export function Slingshot({ onLaunch }) {
       </mesh>
 
       {/* Kantong Kulit (Leather Pouch) Penampung Burung */}
-      <mesh position={[pouchPos.x, pouchPos.y, pouchPos.z]} castShadow>
-        <boxGeometry args={[0.1, 0.5, 0.6]} />
+      <mesh
+        position={[pouchPos.x, pouchPos.y, pouchPos.z]}
+        castShadow
+        onPointerDown={handlePointerDown}
+      >
+        <boxGeometry args={[0.25, 0.7, 0.8]} />
         <meshStandardMaterial color="#451a03" roughness={0.8} />
       </mesh>
 
       {/* Karakter Burung di Bantalan Ketapel */}
       {(gameStatus === 'READY' || gameStatus === 'AIMING') && currentBird && (
         <group position={[birdPos.x, birdPos.y, birdPos.z]}>
-          {/* Grab Area */}
+          {/* Grab Area (Diperluas untuk kemudahan sentuhan mobile) */}
           <mesh visible={false} onPointerDown={handlePointerDown}>
-            <sphereGeometry args={[currentBird.radius * 2.4, 12, 12]} />
+            <sphereGeometry args={[currentBird.radius * 3.8, 12, 12]} />
             <meshBasicMaterial />
           </mesh>
 

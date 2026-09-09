@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useGameStore } from '../../store/useGameStore'
 
 export function GameCamera() {
-  const { camera } = useThree()
+  const { camera, size } = useThree()
   const cameraMode = useGameStore((state) => state.cameraMode)
   const activeBirdPosition = useGameStore((state) => state.activeBirdPosition)
   const levelData = useGameStore((state) => state.levelData)
@@ -15,6 +15,7 @@ export function GameCamera() {
 
   useFrame((_, delta) => {
     const lerpSpeed = Math.min(1, delta * 3.5)
+    const isMobile = size.width < 960 || (size.width / Math.max(1, size.height)) < 1.75
 
     if (cameraMode === 'FOLLOW' && activeBirdPosition) {
       // Mengikuti burung melayang
@@ -34,10 +35,18 @@ export function GameCamera() {
       targetLookAt.current.set(5.5, 2.5, 0)
     } else {
       // Mode AIM (Membidik ketapel)
-      const aimPos = levelData.cameraAimPos || [-4, 3.5, 14]
-      const aimTarget = levelData.cameraTargetPos || [0, 2.5, 0]
-      targetCamPos.current.set(aimPos[0], aimPos[1], aimPos[2])
-      targetLookAt.current.set(aimTarget[0], aimTarget[1], aimTarget[2])
+      const baseAimPos = levelData.cameraAimPos || [-4, 3.5, 14]
+      const baseAimTarget = levelData.cameraTargetPos || [0, 2.5, 0]
+
+      if (isMobile) {
+        // Pada layar mobile, geser kamera ke kiri dan sedikit mundur (zoom out)
+        // agar posisi ketapel lebih ke tengah-kiri dan menyisakan banyak ruang untuk menarik ke belakang
+        targetCamPos.current.set(baseAimPos[0] - 2.2, baseAimPos[1] + 0.2, baseAimPos[2] + 2.2)
+        targetLookAt.current.set(baseAimTarget[0] - 2.0, baseAimTarget[1], baseAimTarget[2])
+      } else {
+        targetCamPos.current.set(baseAimPos[0], baseAimPos[1], baseAimPos[2])
+        targetLookAt.current.set(baseAimTarget[0], baseAimTarget[1], baseAimTarget[2])
+      }
     }
 
     // Interpolasi posisi kamera
