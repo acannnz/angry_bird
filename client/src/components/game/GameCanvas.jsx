@@ -1,14 +1,44 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, Component } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { useGameStore } from '../../store/useGameStore'
-import { LevelEnvironment } from './LevelEnvironment'
+import { LevelEnvironment, GroundCollider } from './LevelEnvironment'
 import { Slingshot } from './Slingshot'
 import { TrajectoryLine } from './TrajectoryLine'
 import { Projectile } from './Projectile'
 import { DestructibleBlock } from './DestructibleBlock'
 import { Enemy } from './Enemy'
 import { GameCamera } from './GameCamera'
+
+// Error boundary: jika Rapier/Physics crash, otomatis reset level agar tidak stuck layar biru
+class PhysicsErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error, info) {
+    console.warn('Physics crash caught, auto-resetting:', error?.message)
+  }
+  componentDidUpdate(prevProps) {
+    // Reset error state ketika resetKey berubah (level di-reset/ganti)
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false })
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      // Trigger auto-reset setelah crash terdeteksi
+      if (this.props.onError) {
+        setTimeout(() => this.props.onError(), 0)
+      }
+      return null
+    }
+    return this.props.children
+  }
+}
 
 export function GameCanvas() {
   const currentLevelIdx = useGameStore((state) => state.currentLevelIdx)
@@ -32,14 +62,19 @@ export function GameCanvas() {
     })
   }, [birdQueue])
 
-  // Bersihkan proyektil aktif saat ganti giliran atau level di-reset
+  // Bersihkan proyektil aktif saat ganti giliran, menang, atau level di-reset
   useEffect(() => {
-    if (gameStatus === 'READY') {
+    if (gameStatus === 'READY' || gameStatus === 'WON' || gameStatus === 'VICTORY_WATCH') {
       setActiveProjectile(null)
     }
   }, [gameStatus, resetKey])
 
   const [slingX, slingY, slingZ] = levelData.slingshot.position
+
+  // Auto-reset level saat Physics crash agar tidak stuck layar biru
+  const handlePhysicsError = useCallback(() => {
+    useGameStore.getState().resetLevel()
+  }, [])
 
   return (
     <div className="relative w-full h-full">
@@ -50,9 +85,14 @@ export function GameCanvas() {
       >
         <GameCamera />
 
+        {/* Lingkungan visual (langit, lampu, bukit, pohon) di luar Physics agar tidak ter-remount saat reset */}
+        <LevelEnvironment />
+
         {/* Gunakan resetKey agar seluruh dunia fisika dan posisi balok/babi di-reset total tanpa sisa */}
+        <PhysicsErrorBoundary resetKey={resetKey} onError={handlePhysicsError}>
         <Physics key={resetKey} gravity={[0, -9.81, 0]}>
-          <LevelEnvironment />
+          {/* Lantai berfisika (collider statis) */}
+          <GroundCollider />
 
           {/* Ketapel & Burung Siap */}
           <Slingshot onLaunch={handleLaunch} />
@@ -106,6 +146,7 @@ export function GameCanvas() {
             </group>
           ))}
         </Physics>
+        </PhysicsErrorBoundary>
       </Canvas>
     </div>
   )

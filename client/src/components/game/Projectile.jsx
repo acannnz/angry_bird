@@ -215,12 +215,14 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       // Burung utama sedikit diarahkan lurus
       rigidBodyRef.current.setLinvel({ x: vel.x * 1.05, y: vel.y, z: 0 }, true)
 
-      // Tambahkan 2 sub-burung ke atas dan ke bawah
+      // Tambahkan 2 sub-burung dengan offset yang cukup besar agar tidak overlap collider induk
+      // Jarak minimum agar tidak overlap = radius + subRadius = 0.35 + 0.315 = 0.665
+      // Gunakan offset 0.85 untuk aman (> 0.665)
       setSubProjectiles([
         {
           id: 'blue_top',
           type: 'split_child',
-          pos: [pos.x, pos.y + 0.35, 0],
+          pos: [pos.x - 0.3, pos.y + 0.85, 0],
           vel: [vel.x * 1.05, vel.y + 3.4, 0],
           radius: radius * 0.9,
           color: '#38bdf8'
@@ -228,7 +230,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
         {
           id: 'blue_bottom',
           type: 'split_child',
-          pos: [pos.x, pos.y - 0.35, 0],
+          pos: [pos.x - 0.3, pos.y - 0.85, 0],
           vel: [vel.x * 1.05, vel.y - 3.4, 0],
           radius: radius * 0.9,
           color: '#38bdf8'
@@ -254,11 +256,12 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       rigidBodyRef.current.setLinvel({ x: Math.max(vel.x + 3.0, 8.0), y: Math.max(vel.y + 9.0, 9.0), z: 0 }, true)
 
       // Telur dijatuhkan tegak lurus dengan kecepatan jatuh tinggi
+      // Offset Y = -1.0 agar tidak overlap dengan collider Matilda (radius 0.52 + 0.32 = 0.84)
       setSubProjectiles([
         {
           id: 'matilda_egg',
           type: 'egg_bomb',
-          pos: [pos.x, pos.y - 0.55, 0],
+          pos: [pos.x, pos.y - 1.0, 0],
           vel: [vel.x * 0.25, -15.0, 0],
           radius: 0.32,
           color: '#ffffff'
@@ -285,6 +288,10 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
 
   // Handler benturan untuk sub-proyektil (The Blues split & Egg Bomb)
   const handleSubProjectileCollision = useCallback((subId, subType, event) => {
+    // Abaikan tabrakan antar burung (induk vs anak, anak vs anak)
+    const otherData = event.other?.rigidBodyObject?.userData || event.other?.rigidBody?.userData
+    if (otherData?.isBird || otherData?.isSubBird) return
+
     if (subType === 'egg_bomb') {
       sfx.playExplosion()
       // Ledakan telur Matilda
@@ -318,7 +325,6 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       setSubProjectiles((prev) => prev.filter((p) => p.id !== subId))
     } else {
       // Sub-burung The Blues menabrak balok es/kayu atau babi
-      const otherData = event.other?.rigidBodyObject?.userData || event.other?.rigidBody?.userData
       if (otherData?.id && !otherData?.isPig) {
         // Menghantam balok
         if (otherData.blockType === 'ice') {
@@ -414,8 +420,13 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
   }, [birdType, isExploded, triggerChuckSpeedBoost, triggerBombExplosion, triggerBluesSplit, triggerMatildaEggDrop, triggerHalBoomerang, triggerRedBattleCry])
 
   useEffect(() => {
-    const handleGlobalClick = () => {
-      activateBirdSkill()
+    const handleGlobalClick = (e) => {
+      // Hanya aktifkan skill saat burung sedang terbang, dan klik di area canvas (bukan UI)
+      const tag = e.target?.tagName?.toLowerCase()
+      const isUI = tag === 'button' || tag === 'input' || tag === 'select' || e.target?.closest?.('[data-ui]')
+      if (!isUI) {
+        activateBirdSkill()
+      }
     }
 
     window.addEventListener('pointerdown', handleGlobalClick)
@@ -436,6 +447,14 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
 
       const pos = rigidBodyRef.current.translation()
       const linvel = rigidBodyRef.current.linvel()
+
+      // Guard: jika physics breakdown menghasilkan NaN, langsung settle
+      if (!isFinite(pos.x) || !isFinite(pos.y) || !isFinite(linvel.x) || !isFinite(linvel.y)) {
+        hasSettled.current = true
+        birdSettled()
+        return
+      }
+
       const speed = Math.hypot(linvel.x, linvel.y, linvel.z)
 
       setActiveBirdPosition(new THREE.Vector3(pos.x, pos.y, 0))
@@ -444,7 +463,7 @@ export function Projectile({ initialPosition, initialImpulse, initialVelocity, b
       if (elapsed > 1800 && speed < 0.35) {
         hasSettled.current = true
         birdSettled()
-      } else if (pos.y < -2.5 || pos.x > 38 || elapsed > 9000) {
+      } else if (pos.y < -2.5 || pos.y > 18 || pos.x > 38 || pos.x < -20 || elapsed > 9000) {
         hasSettled.current = true
         birdSettled()
       }
