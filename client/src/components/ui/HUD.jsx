@@ -62,7 +62,7 @@ export function HUD() {
       {/* Top Header */}
       <div className="flex items-start justify-between gap-2 sm:gap-3">
         {/* Left: Level Selector (20 Level Scrollable) */}
-        <div className="pointer-events-auto flex flex-col gap-1 bg-slate-950/80 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border border-slate-800/80 shadow-lg max-w-[180px] sm:max-w-xs md:max-w-md">
+        <div className="pointer-events-auto flex flex-col gap-1 bg-slate-950/80 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border border-slate-800/80 shadow-lg max-w-[180px] sm:max-w-xs md:max-w-md" onPointerDown={(e) => e.stopPropagation()}>
           <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 truncate">
             {levelData.name}
           </span>
@@ -99,7 +99,7 @@ export function HUD() {
         </div>
 
         {/* Right: Actions Controls */}
-        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 bg-slate-950/80 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-slate-800/80 shadow-lg">
+        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 bg-slate-950/80 backdrop-blur-md p-1 sm:p-1.5 rounded-2xl border border-slate-800/80 shadow-lg" onPointerDown={(e) => e.stopPropagation()}>
           {/* Ganti Sudut Kamera */}
           <button
             onClick={handleToggleCamera}

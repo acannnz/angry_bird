@@ -19,7 +19,7 @@ export function WinLoseModal() {
   const isWon = gameStatus === 'WON'
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-300">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-300" onPointerDown={(e) => e.stopPropagation()}>
       <div className="relative w-full max-w-sm sm:max-w-md max-h-[92vh] overflow-y-auto rounded-3xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-2 border-amber-500/40 p-4 sm:p-6 shadow-2xl shadow-amber-500/10 text-center text-white my-auto scrollbar-none overscroll-contain">
         
         {/* Header Icon */}

@@ -2,6 +2,8 @@ import React from 'react'
 import { RigidBody } from '@react-three/rapier'
 import { Sky } from '@react-three/drei'
 
+// Komponen visual murni (langit, lampu, bukit, pohon, tanah dekoratif)
+// Ditempatkan DI LUAR <Physics> agar tidak ter-remount saat level reset
 export function LevelEnvironment() {
   return (
     <group>
@@ -32,15 +34,7 @@ export function LevelEnvironment() {
       />
       <hemisphereLight skyColor="#bae6fd" groundColor="#3f6212" intensity={0.4} />
 
-      {/* Lantai / Ground Statis Berfisika */}
-      <RigidBody type="fixed" friction={0.8} restitution={0.2}>
-        <mesh position={[0, -0.5, 0]} receiveShadow>
-          <boxGeometry args={[140, 1, 80]} />
-          <meshStandardMaterial color="#65a30d" roughness={0.8} />
-        </mesh>
-      </RigidBody>
-
-      {/* Lapisan Tanah Bawah */}
+      {/* Lapisan Tanah Bawah (dekoratif, non-fisika) */}
       <mesh position={[0, -4.5, 0]}>
         <boxGeometry args={[140, 7, 80]} />
         <meshStandardMaterial color="#78350f" roughness={0.9} />
@@ -66,6 +60,19 @@ export function LevelEnvironment() {
       <CartoonTree position={[14, 0, -3]} />
       <CartoonTree position={[18, 0, 2]} />
     </group>
+  )
+}
+
+// Komponen lantai berfisika (collider)
+// Ditempatkan DI DALAM <Physics> agar collision detection berfungsi
+export function GroundCollider() {
+  return (
+    <RigidBody type="fixed" friction={0.8} restitution={0.2}>
+      <mesh position={[0, -0.5, 0]} receiveShadow>
+        <boxGeometry args={[140, 1, 80]} />
+        <meshStandardMaterial color="#65a30d" roughness={0.8} />
+      </mesh>
+    </RigidBody>
   )
 }
 

@@ -98,7 +98,10 @@ export const useGameStore = create((set, get) => ({
       if (state.gameStatus === 'FLYING') {
         set({ cameraMode: 'OVERVIEW', gameStatus: 'SETTLING' })
         setTimeout(() => {
-          get().evaluateTurn()
+          const currentState = get()
+          if (currentState.gameStatus !== 'WON' && currentState.gameStatus !== 'VICTORY_WATCH' && currentState.gameStatus !== 'LOST') {
+            get().evaluateTurn()
+          }
         }, 2500)
       }
     }, 4500)
@@ -112,7 +115,10 @@ export const useGameStore = create((set, get) => ({
     if (get().gameStatus === 'FLYING') {
       set({ gameStatus: 'SETTLING', cameraMode: 'OVERVIEW' })
       setTimeout(() => {
-        get().evaluateTurn()
+        const currentState = get()
+        if (currentState.gameStatus !== 'WON' && currentState.gameStatus !== 'VICTORY_WATCH' && currentState.gameStatus !== 'LOST') {
+          get().evaluateTurn()
+        }
       }, 2500)
     }
   },

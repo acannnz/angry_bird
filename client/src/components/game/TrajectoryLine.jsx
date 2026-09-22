@@ -22,7 +22,7 @@ export function TrajectoryLine() {
     )
 
     // Arah berlawanan dengan tarikan
-    const force = levelData.slingshot.forceFactor || 20.0
+    const force = levelData.slingshot.forceFactor || 28.0
     const mass = currentBird.mass || 3.5
     // Kecepatan awal v0 = impulse / mass = (-offset * force) / mass
     const v0 = new THREE.Vector3(-ox, -oy, 0).multiplyScalar(force / mass)
